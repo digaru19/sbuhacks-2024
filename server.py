@@ -1,23 +1,46 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+import random
 
 from .gemini import generateMultipleChoiceQuestion, generatePlaceInfo, getAnswerFromGemini
 from .geocoding import get_lat_lon, reverse_geolocate
+# from .ImageGenerator import generate_image
 
 
 app = Flask(__name__)
 CORS(app)
 
-trivia_facts = [
-    {"id": 1, "fact": "The Great Wall of China is visible from space."},
-    {"id": 2, "fact": "The Earth has one moon."},
-    {"id": 3, "fact": "The human body has 206 bones."}
+defaultRegionTypes = [
+    "city",
+    "country",
+    "US State"
 ]
 
 @app.route('/get_quiz_question', methods=['GET'])
 def get_quiz_question():
-    geminiResp = generateMultipleChoiceQuestion(loc="city", per="modern day", cat="geography related")
+    categories = request.args.get('categories')
+    if not categories:
+        categories = ['geography']
+    else:
+        print(categories)
+        categories = categories.strip().split(',')
+        categories = list(filter(lambda x: x != "", categories))
+        print(categories)
+
+    regionTypes = request.args.get('region')
+    if not regionTypes:
+        regionTypes = defaultRegionTypes
+    else:
+        regionTypes = regionTypes.strip().split(',')
+
+    category = random.choice(categories)
+    regionType = random.choice(regionTypes)
+
+    geminiResp = generateMultipleChoiceQuestion(regionType=regionType, period="modern day", category=category, difficulty="hard")
     options_locations = []
+    
+    # explanation = geminiResp["explanation"]
+    # img_url = generate_image(explanation)
 
     for option in geminiResp["options"]:
         location = get_lat_lon(option)
@@ -29,6 +52,7 @@ def get_quiz_question():
         })
 
     geminiResp["options"] = options_locations
+    # geminiResp["img_url"] = img_url
     return geminiResp
 
 
@@ -53,11 +77,15 @@ def get_place_info():
 def get_trivia_facts():
     question = str(request.args.get('question'))
 
-    answer = getAnswerFromGemini(question)
-    location = get_lat_lon(answer)
+    resp = getAnswerFromGemini(question)
+
+    place_name = resp["answer"]
+
+    location = get_lat_lon(place_name)
 
     resp = {
-        "name": answer,
+        "name": place_name,
+        "explanation": resp["explanation"],
         "lat": location[0],
         "lon": location[1]
     }

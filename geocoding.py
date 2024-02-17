@@ -29,6 +29,17 @@ def read_csv2_to_dict(csv_file):
             lng = float(row['longitude'])
             local_cache[country] = (lat, lng)
 
+def read_csv3_to_dict(csv_file):
+    global local_cache
+
+    with open(csv_file, mode='r', encoding='utf-8-sig') as file:
+        csv_reader = csv.DictReader(file)
+        for row in csv_reader:
+            state_name = row['name']
+            lat = float(row['latitude'])
+            lng = float(row['longitude'])
+            local_cache[state_name] = (lat, lng)
+
 
 def get_lat_lon(place_name):
     # Check if the place data exists in the dictionary
@@ -38,9 +49,11 @@ def get_lat_lon(place_name):
     else:
         # Make a remote HTTP API call to get the location data
         api_url = f"http://api.positionstack.com/v1/forward?access_key={positionstack_api_key}&query={place_name}"
+        print(api_url)
         response = requests.get(api_url)
         if response.status_code == 200:
             resp = response.json()
+            # print(resp)
             data = resp["data"]
             print(data[0])
             lat = float(data[0]["latitude"])
@@ -70,5 +83,6 @@ def init():
     global local_cache
     local_cache = read_csv1_to_dict('./maps_data/worldcities.csv')
     read_csv2_to_dict('./maps_data/world_countries.csv')
+    read_csv3_to_dict('./maps_data/us-states.csv')
 
 init()
